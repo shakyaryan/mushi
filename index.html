@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSHI - AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Keyframe Animations --- */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* --- Color Palette & Base Styles --- */
+        :root {
+            --bg-light: #ffffff;
+            --bg-dark: #1a1a1a;
+            --text-light: #1a1a1a;
+            --text-dark: #f0f0f0;
+            --container-light: #f7f7f7;
+            --container-dark: #2a2a2a;
+            --accent: #8e44ad;
+        }
+
+        html.dark {
+            --bg: var(--bg-dark);
+            --text: var(--text-dark);
+            --container: var(--container-dark);
+        }
+        html.light {
+            --bg: var(--bg-light);
+            --text: var(--text-light);
+            --container: var(--container-light);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .messages-container::-webkit-scrollbar { width: 6px; }
+        .messages-container::-webkit-scrollbar-track { background: transparent; }
+        .messages-container::-webkit-scrollbar-thumb { background-color: #555; border-radius: 20px; }
+
+        .bot-message, .user-message {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        /* --- Welcome Screen --- */
+        .welcome-screen > * {
+            animation: fadeInUp 0.8s ease-out forwards;
+            opacity: 0;
+        }
+        .welcome-screen img { animation-delay: 0.2s; }
+        .welcome-screen h1 { animation-delay: 0.4s; }
+        .welcome-screen p { animation-delay: 0.6s; }
+        .welcome-screen input { animation-delay: 0.8s; }
+        .welcome-screen button { animation-delay: 1s; }
+
+        /* --- Typing Indicator --- */
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen antialiased">
+
+    <!-- Main Container -->
+    <div class="w-full h-full flex flex-col">
+
+        <!-- Welcome Screen -->
+        <div id="welcome" class="flex flex-col items-center justify-center text-center h-full p-8 welcome-screen">
+            <img src="https://placehold.co/100x100/8e44ad/ffffff?text=M" alt="MUSHI Logo" class="w-24 h-24 rounded-full shadow-lg" onerror="this.onerror=null;this.src='https://placehold.co/100x100/8e44ad/ffffff?text=M';">
+            <h1 class="text-4xl font-bold mt-6 mb-2">Welcome to MUSHI</h1>
+            <p class="text-lg opacity-80 mb-8 max-w-md">Your friendly AI assistant. Please enter your name to begin this session.</p>
+            <div class="flex gap-2">
+                 <input type="text" id="username" placeholder="Your name..." class="w-full max-w-xs bg-[var(--container)] text-[var(--text)] placeholder-[var(--text)]/50 rounded-lg px-6 py-3 text-center focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition duration-300">
+                 <button onclick="startChat()" class="px-6 py-3 rounded-lg font-semibold bg-[var(--accent)] text-white hover:opacity-90 transition duration-300">Start</button>
+            </div>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chat" class="hidden flex-col h-full items-center">
+            <!-- Header -->
+            <header class="w-full max-w-4xl p-4 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <img src="https://placehold.co/40x40/8e44ad/ffffff?text=M" alt="MUSHI Logo" class="w-10 h-10 rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/40x40/8e44ad/ffffff?text=M';">
+                    <h1 class="text-xl font-bold">MUSHI</h1>
+                </div>
+            </header>
+
+            <!-- Messages -->
+            <main id="messages" class="flex-1 w-full max-w-4xl overflow-y-auto p-6 space-y-8 messages-container">
+                <!-- Messages will be injected here -->
+            </main>
+
+            <!-- Input Area -->
+            <footer class="p-4 w-full max-w-4xl flex-shrink-0">
+                 <div class="bg-[var(--container)] rounded-2xl p-2 flex items-center gap-2 shadow-lg transition-all duration-300 focus-within:ring-2 ring-[var(--accent)]" style="animation: fadeInUp 1s ease-out forwards; opacity:0;">
+                    <button id="suggest-btn" onclick="suggestQuestion()" class="p-3 rounded-xl hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-300">
+                        <i class="ph-fill ph-sparkle text-xl text-[var(--accent)]"></i>
+                    </button>
+                    <textarea id="userInput" placeholder="Ask MUSHI anything..." class="w-full h-12 bg-transparent text-[var(--text)] placeholder-[var(--text)]/50 focus:outline-none resize-none py-3"></textarea>
+                    <button id="send-btn-container" onclick="sendMessage()" class="p-3 rounded-xl bg-[var(--accent)] text-white hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="ph-fill ph-paper-plane-tilt text-xl"></i>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // --- Core App State ---
+        let userName = "";
+        let chatHistory = [];
+        let isWaitingForResponse = false;
+
+        // --- DOM Elements ---
+        const welcomeScreen = document.getElementById("welcome");
+        const chatScreen = document.getElementById("chat");
+        const usernameInput = document.getElementById("username");
+        const userInput = document.getElementById("userInput");
+        const messagesDiv = document.getElementById("messages");
+        const sendBtn = document.getElementById('send-btn-container');
+        const suggestBtn = document.getElementById('suggest-btn');
+
+        // --- Gemini API Configuration ---
+        const apiKey = "AIzaSyBLtge_A1KUu6cNQwoBDb19Msv-IbXKs0I"; // This will be handled by the execution environment.
+        const model = "gemini-2.5-flash-preview-05-20";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        
+        const systemInstruction = {
+            parts: [{ text: `You are MUSHI, a friendly and helpful AI assistant for ABSS Institute of Technology, Meerut, which is affiliated with Dr. A.P.J. Abdul Kalam Technical University, Lucknow. Your tone should be encouraging and informative. Keep your answers concise and easy to understand. Use markdown for formatting when appropriate.
+
+If you are asked who your developer is or who made you, you must answer with 'I am a web app developed by Aryan Shakya and a large language model, trained by Google.' Do not format the word Google in bold.
+
+You also have access to information about a few of the many talented students at the university. If asked about specific students, provide their information in an engaging way. Here are some examples:
+
+- **Aryan Shakya**: The mastermind behind me, MUSHI! Aryan is a final-year B.Tech student in Computer Science & Engineering (2022-26) with a passion for AI & ML. He has a deep appreciation for history and culture and believes that coding is a reflection of nature itself.
+
+- **Jatin Kumar Mehta**: A multi-talented final-year Computer Science & Engineering student (2022-26) focusing on AI & ML. Jatin is a creative force, skilled in UI/UX, graphic design, and sound design. He's also a published musician with tracks on Spotify and Apple Music. He has significant startup experience, having officially worked with emerging companies like Solitude Esports (India & US), Wisecode (India), and his own venture, Healzenic. It's also believed he assists with some confidential projects. His team, including Saurabh Kumar Mishra and Pankaj Kumar Ray, also secured 4th place at a state-level hackathon for their Healzenic project.
+
+- **Saurabh Kumar Mishra**: A dedicated final-year Computer Science & Engineering student (2022-26) specializing in AI & ML. Known for his incredible work ethic, he was a key member of the award-winning Healzenic project. Saurabh is passionate about fitness and is driven by a deep curiosity to understand the world around him.
+
+- **Ashwani Kumar Singh**: A highly skilled programmer and final-year Full Stack Development student in the B.Tech CSE program (2022-26). With a strong command of Data Structures and Algorithms, Ashwani is an aspiring entrepreneur, currently developing his innovative business idea, Dripkite.
+
+- **Rohit Singh**: A final-year B.Tech CSE student (2022-26) who excels in Front-End Web Development. Rohit is known for his discipline, holding the highest attendance record in the college, and is also a standout athlete with exceptional skills in Volleyball.
+
+- **Mohit Raj**: A friendly and laid-back final-year B.Tech CSE student (2022-26). While he keeps his specific career goals private, he's known for being a great friend to many on campus. And for his legendary sleeping skills!
+
+Remember, these are just a few examples of the bright minds at ABSS Institute of Technology.` }]
+        };
+
+        function startChat() {
+            const nameInput = usernameInput.value.trim();
+            if (nameInput === "") {
+                usernameInput.classList.add('animate-pulse');
+                setTimeout(() => usernameInput.classList.remove('animate-pulse'), 500);
+                return;
+            }
+            userName = nameInput;
+            welcomeScreen.style.display = "none";
+            chatScreen.classList.remove("hidden");
+            chatScreen.classList.add("flex");
+
+            setTimeout(() => {
+                addMessage("bot", `Hi, ${userName}! 👋 Welcome to MUSHI. How can I assist you today?`);
+            }, 500);
+        }
+
+        function addMessage(sender, text) {
+            const msgWrapper = document.createElement("div");
+            
+            if (sender === 'user') {
+                msgWrapper.className = 'flex items-start gap-4 justify-end user-message';
+                msgWrapper.innerHTML = `
+                    <div class="p-4 rounded-2xl max-w-xl bg-[var(--container)] shadow-sm">
+                        <p class="text-base">${text}</p>
+                    </div>
+                `;
+            } else {
+                msgWrapper.className = 'flex items-start gap-4 bot-message';
+                msgWrapper.innerHTML = `
+                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-[var(--accent)] text-white">
+                        <i class="ph-fill ph-robot text-2xl"></i>
+                    </div>
+                    <div class="p-4 rounded-2xl max-w-xl bg-[var(--container)] shadow-sm">
+                        <p class="text-base">${text.replace(/\n/g, '<br>')}</p>
+                    </div>
+                `;
+            }
+            messagesDiv.appendChild(msgWrapper);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function showTypingIndicator(show) {
+            const existingIndicator = document.getElementById('typing-indicator');
+            if (show) {
+                if (existingIndicator) return;
+                const indicatorWrapper = document.createElement("div");
+                indicatorWrapper.id = 'typing-indicator';
+                indicatorWrapper.className = 'flex items-start gap-4 bot-message';
+                indicatorWrapper.innerHTML = `
+                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-[var(--accent)] text-white">
+                        <i class="ph-fill ph-robot text-2xl"></i>
+                    </div>
+                    <div class="p-4 rounded-2xl max-w-md bg-[var(--container)] shadow-sm typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                `;
+                messagesDiv.appendChild(indicatorWrapper);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else {
+                if (existingIndicator) existingIndicator.remove();
+            }
+        }
+
+        function setWaitingState(isWaiting) {
+            isWaitingForResponse = isWaiting;
+            userInput.disabled = isWaiting;
+            sendBtn.disabled = isWaiting;
+            suggestBtn.disabled = isWaiting;
+        }
+
+        async function fetchWithRetry(payload, maxRetries = 3) {
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    return result.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error(`Attempt ${attempt + 1} failed:`, error);
+                    attempt++;
+                    if (attempt >= maxRetries) return "I'm having trouble connecting right now. Please try again later. 😔";
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+            }
+        }
+
+        async function sendMessage() {
+            if (isWaitingForResponse) return;
+            const text = userInput.value.trim();
+            if (text === "") return;
+
+            addMessage("user", text);
+            userInput.value = "";
+            autoResizeTextarea();
+            setWaitingState(true);
+            showTypingIndicator(true);
+
+            chatHistory.push({ role: "user", parts: [{ text }] });
+
+            const payload = { contents: chatHistory, systemInstruction: systemInstruction };
+            const botReply = await fetchWithRetry(payload);
+            
+            chatHistory.push({ role: "model", parts: [{ text: botReply }] });
+
+            showTypingIndicator(false);
+            addMessage("bot", botReply);
+            setWaitingState(false);
+        }
+
+        async function suggestQuestion() {
+            if (isWaitingForResponse) return;
+            setWaitingState(true);
+            
+            const prompt = "Suggest one creative and interesting question to ask an AI assistant for a university. The question should be something a student might ask. Make it short and direct.";
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            const suggestion = await fetchWithRetry(payload);
+userInput.value = suggestion.replace(/["']/g, "");
+            setWaitingState(false);
+            userInput.focus();
+            autoResizeTextarea();
+        }
+
+        function autoResizeTextarea() {
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+        }
+
+        // --- Event Listeners ---
+        userInput.addEventListener('input', autoResizeTextarea);
+        userInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+        usernameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") startChat();
+        });
+    </script>
+</body>
+</html>
